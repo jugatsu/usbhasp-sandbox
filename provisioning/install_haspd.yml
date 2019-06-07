@@ -1,0 +1,49 @@
+---
+
+- name: Ensure i386 architecture is enabled.
+  lineinfile:
+    dest: /var/lib/dpkg/arch
+    line: "i386"
+  register: add_i386
+
+- name: Ensure apt cache is updated.
+  apt:
+    update_cache: "{{ add_i386.changed }}"
+    force_apt_get: yes
+
+- name: Ensure dependencies for haspd are present.
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+    cache_valid_time: 3600
+    force_apt_get: yes
+    state: present
+  vars:
+    packages:
+      - libusb-1.0-0:i386
+      - usbutils
+      - udev
+      - libkmod2
+      - kmod
+
+- name: Ensure packages for haspd are downloaded.
+  get_url:
+    url: "{{ haspd_url }}/{{ item }}"
+    dest: /opt/{{ item }}
+  loop:
+    - haspd_7.90-eter1ubuntu_amd64.deb
+    - haspd-modules_7.90-eter1ubuntu_amd64.deb
+
+- name: Ensure packages for haspd are installed.
+  apt:
+    deb: /opt/{{ item }}
+    force_apt_get: yes
+  loop:
+    - haspd_7.90-eter1ubuntu_amd64.deb
+    - haspd-modules_7.90-eter1ubuntu_amd64.deb
+
+- name: Ensure haspd services is running and enabled.
+  service:
+    name: haspd
+    enabled: yes
+    state: started

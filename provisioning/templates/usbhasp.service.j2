@@ -1,0 +1,12 @@
+[Unit]
+Description=UsbHasp
+Documentation=https://github.com/sam88651/UsbHasp.git
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/usbhasp /usr/local/etc/usbhasp/{{ usbhasp_key }}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

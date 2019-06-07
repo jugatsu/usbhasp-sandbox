@@ -1,0 +1,53 @@
+---
+
+- hosts: all
+  become: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    haspd_url: https://download.etersoft.ru/pub/Etersoft/HASP/last/x86_64/Ubuntu/18.04
+    usbhasp_key: hasp.json
+    usbhasp_url: https://github.com/sam88651/UsbHasp.git
+    usb_vhci_url: git://git.code.sf.net/p/usb-vhci/vhci_hcd
+
+  pre_tasks:
+
+    - name: Check if HASP Key exists.
+      stat:
+        path: /srv/provisioning/files/{{ usbhasp_key }}
+      register: stat_result
+
+    - fail:
+        msg: HASP Key not found. Ensure USB Key is plugged.
+      when: stat_result.stat.exists == false
+
+    - name: Ensure all build dependencies are present.
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+        cache_valid_time: 3600
+        force_apt_get: yes
+        state: present
+      vars:
+        packages:
+          - git
+          - build-essential
+          - linux-headers-{{ ansible_kernel }}
+          - build-essential
+          - libelf-dev
+          - libjansson-dev
+
+  tasks:
+    - import_tasks: install_usb_vhci.yml
+    - import_tasks: install_libusb_vhci.yml
+    - import_tasks: install_usbhasp.yml
+    - import_tasks: install_haspd.yml
+
+  handlers:
+    - name: run ldconfig
+      command: /sbin/ldconfig
+
+    - name: restart usbhasp
+      systemd:
+        name: usbhasp
+        daemon_reload: yes
+        state: restarted

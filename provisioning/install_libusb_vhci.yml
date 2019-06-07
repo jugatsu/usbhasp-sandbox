@@ -1,0 +1,20 @@
+---
+
+# Sourceforge download links are very unreliable
+- name: Ensure source code for libusb_vhci is downloaded.
+  unarchive:
+    src: /srv/provisioning/files/libusb_vhci-0.7.tar.gz
+    dest: /usr/local/src/
+    remote_src: yes
+
+- name: Build libraries.
+  command: "{{ item }}"
+  args:
+    chdir: /usr/local/src/libusb_vhci-0.7
+    creates: /usr/local/lib/libusb_vhci.so.0
+  loop:
+    - ./configure
+    - make
+    - make install
+  notify:
+    - run ldconfig

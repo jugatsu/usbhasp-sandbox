@@ -1,0 +1,52 @@
+---
+
+- name: Ensure source code for vhci_hcd is downloaded.
+  git:
+    repo: "{{ usb_vhci_url }}"
+    dest: /usr/local/src/vhci_hcd
+    force: yes
+    update: no
+
+- name: Comment out debugging mode.
+  lineinfile:
+    path: "{{ item }}"
+    regexp: '#define DEBUG'
+    line: '// #define DEBUG'
+    firstmatch: yes
+  loop:
+    - /usr/local/src/vhci_hcd/usb-vhci-hcd.c
+    - /usr/local/src/vhci_hcd/usb-vhci-iocifc.c
+
+# https://github.com/buserror/simavr/issues/286#issuecomment-405057183
+- name: Tweak to get working with more recent kernels.
+  lineinfile:
+    path: /usr/local/src/vhci_hcd/usb-vhci-iocifc.c
+    insertafter: '^#include <linux/platform_device.h>'
+    line: '#include <linux/uaccess.h>'
+  register: src
+
+- name: Build kernel modules.
+  command: "{{ item }}"
+  args:
+    chdir: /usr/local/src/vhci_hcd
+    creates: /usr/include/linux/usb-vhci.h
+  loop:
+    - make
+    - make install
+
+- name: Ensure kernel modules are loaded.
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - usb-vhci-hcd
+    - usb-vhci-iocifc
+
+- name: Ensure kernel modules are loaded at boot time.
+  lineinfile:
+    dest: /etc/modules
+    state: present
+    line: "{{ item }}"
+  loop:
+    - usb-vhci-hcd
+    - usb-vhci-iocifc

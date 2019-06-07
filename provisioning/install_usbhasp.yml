@@ -1,0 +1,45 @@
+---
+
+- name: Ensure source code for UsbHasp is downloaded.
+  git:
+    repo: "{{ usbhasp_url }}"
+    dest: /usr/local/src/UsbHasp
+
+- name: Build usbhasp binary.
+  command: make
+  args:
+    chdir: /usr/local/src/UsbHasp
+    creates: dist/Release/GNU-Linux/usbhasp
+
+- name: Copy usbhasp binary to /usr/local/bin.
+  copy:
+    src: /usr/local/src/UsbHasp/dist/Release/GNU-Linux/usbhasp
+    dest: /usr/local/bin
+    mode: preserve
+    remote_src: yes
+
+- name: Ensure directory for usbhasp configuration file is present.
+  file:
+    path: /usr/local/etc/usbhasp
+    state: directory
+    mode: '0755'
+
+- name: Ensure configuration file is copied.
+  copy:
+    src: /srv/provisioning/files/{{ usbhasp_key }}
+    dest: /usr/local/etc/usbhasp
+    mode: preserve
+    remote_src: yes
+
+- name: Ensure usbhasp systemd service is present.
+  template:
+    src: /srv/provisioning/templates/usbhasp.service.j2
+    dest: /etc/systemd/system/usbhasp.service
+  notify:
+    - restart usbhasp
+
+- name: Ensure usbhasp services is running and enabled.
+  service:
+    name: usbhasp
+    enabled: yes
+    state: started
